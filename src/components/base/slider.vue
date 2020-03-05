@@ -2,25 +2,23 @@
     <div class="slide-banner">
         <div class="banner-wrapper">
             <div class="slide-banner-scroll" ref="slide">
-                <div class="slide-banner-wrapper">
-                    <div class="slide-item page1">page 1</div>
-                    <div class="slide-item page2">page 2</div>
-                    <div class="slide-item page3">page 3</div>
-                    <div class="slide-item page4">page 4</div>
+                <div class="slide-banner-wrapper" ref="sliderGroup">
+                    <slot></slot>
                 </div>
             </div>
             <div class="docs-wrapper">
-        <span
-                class="doc"
-                v-for="(item, index) in 4"
-                :key="index"
-                :class="{'active': currentPageIndex === index}"/>
+                <span
+                        class="doc"
+                        v-for="(item, index) in dots"
+                        :key="index"
+                        :class="{'active': currentPageIndex === index}"/>
             </div>
         </div>
     </div>
 </template>
 
 <script>
+    import {addClass} from '../../common/js/dom'
     import BScroll from '@better-scroll/core'
     import Slide from '@better-scroll/slide'
 
@@ -28,6 +26,23 @@
 
     export default {
         name: "slider",
+        props: {
+            //循环轮播
+            loop: {//默认不循环
+                type: Boolean,
+                default: true
+            },
+            //自动轮播
+            autoPlay: {
+                type: Boolean,
+                default: true
+            },
+            //自动轮播的时间参数
+            interval: {
+                type: Number,
+                default: 4000
+            }
+        },
         data() {
             return {
                 dots: [],
@@ -37,20 +52,60 @@
             }
         },
         mounted() {
-            this.init()
+            setTimeout(() => {
+                this._setSliderWidth(false);
+                this._initDots();
+                this.init()
+
+                if (this.autoPlay) {
+                    this.autoGoNext()
+                }
+            }, 21);
+
+            window.addEventListener('resize', () => {
+                if (!this.slider) {
+                    return;
+                }
+                this._setSliderWidth(true);
+                this.slider.refresh();
+            })
+
         },
         beforeDestroy() {
             clearTimeout(this.playTimer);
             this.slide.destroy()
         },
         methods: {
+            _setSliderWidth(isResize) {
+                this.children = this.$refs.sliderGroup.children;
+                let width = 0;
+                let sliderWidth = this.$refs.slide.clientWidth;
+                if(this.children.length == 0) {
+                    return;
+                }
+                for (let i = 0; i < this.children.length; i++) {
+                    let child = this.children[i];
+                    addClass(child, 'slider-item');//设置对应好的样式名称,方便样式的装饰灯\等
+                    child.style.width = sliderWidth + 'px';//设置每张图片的宽度
+                    width += sliderWidth;//总宽度等于单个图片的宽度*个数
+                }
+                if (this.loop && !isResize) {
+                    width += 2 * sliderWidth
+                }
+
+                this.$refs.sliderGroup.style.width = width + 'px'
+
+            },
+            _initDots() {
+                this.dots = new Array(this.children.length)
+            },
             init() {
                 clearTimeout(this.playTimer);
                 this.slide = new BScroll(this.$refs.slide, {
                     scrollX: true,
                     scrollY: false,
                     slide: {
-                        loop: true,
+                        loop: this.loop,
                         threshold: 100
                     },
                     useTransition: true,
@@ -87,7 +142,7 @@
                 clearTimeout(this.playTimer);
                 this.playTimer = setTimeout(() => {
                     this.nextPage()
-                }, 4000)
+                }, this.interval)
             }
         }
     }
@@ -111,33 +166,20 @@
             overflow hidden
 
         .slide-banner-wrapper
-            height 200px
             white-space nowrap
             font-size 0
 
             .slide-item
                 display inline-block
-                height 200px
                 width 100%
-                line-height 200px
                 text-align center
-                font-size 26px
 
-                &.page1
-                    background-color #95B8D1
-
-                &.page2
-                    background-color #DDA789
-
-                &.page3
-                    background-color #C3D899
-
-                &.page4
-                    background-color #F2D4A7
+                img
+                    width: 100%;
 
         .docs-wrapper
             position absolute
-            bottom 4px
+            bottom 15px
             left 50%
             transform translateX(-50%)
 
